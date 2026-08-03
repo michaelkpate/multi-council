@@ -17,7 +17,7 @@ import json
 import sys
 from concurrent.futures import ThreadPoolExecutor
 
-from adapters import openrouter
+from adapters import agy, openrouter
 from adapters.base import Job, Result
 
 DEFAULT_TIMEOUTS = {
@@ -29,6 +29,7 @@ DEFAULT_TIMEOUTS = {
 
 TRANSPORTS = {
     "openrouter": openrouter.run,
+    "agy": agy.run,
 }
 
 

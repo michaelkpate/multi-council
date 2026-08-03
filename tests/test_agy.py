@@ -1,0 +1,79 @@
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+
+from adapters import agy
+from adapters.base import Job
+
+
+def _job() -> Job:
+    return Job(
+        seat="gemini",
+        transport="agy",
+        model="gemini-3.1-pro-high",
+        prompt="Should I refactor now or ship first?",
+        timeout_s=60,
+    )
+
+
+def test_prompt_is_the_value_of_print_and_comes_last():
+    """Regression: --print consumes the next token as its prompt.
+
+    If any flag is ever appended after --print, that flag becomes the prompt
+    and the real question is silently discarded with exit code 0.
+    """
+    argv = agy.build_argv(_job())
+    assert argv[-2] == "--print"
+    assert argv[-1] == "Should I refactor now or ship first?"
+
+
+def test_argv_contains_no_flag_after_the_prompt():
+    argv = agy.build_argv(_job())
+    assert not argv[-1].startswith("--")
+
+
+def test_model_and_json_format_are_passed():
+    argv = agy.build_argv(_job())
+    assert argv[argv.index("--model") + 1] == "gemini-3.1-pro-high"
+    assert argv[argv.index("--output-format") + 1] == "json"
+
+
+def test_successful_run_extracts_response(monkeypatch):
+    payload = {"status": "SUCCESS", "response": "Ship first.", "duration_seconds": 7.4}
+
+    def fake_runner(argv, timeout):
+        return subprocess.CompletedProcess(argv, 0, json.dumps(payload), "")
+
+    r = agy.run(_job(), _runner=fake_runner)
+    assert r.ok is True
+    assert r.text == "Ship first."
+
+
+def test_nonzero_exit_is_a_clean_failure():
+    def fake_runner(argv, timeout):
+        return subprocess.CompletedProcess(argv, 1, "", "agent execution terminated")
+
+    r = agy.run(_job(), _runner=fake_runner)
+    assert r.ok is False
+    assert "exit 1" in r.error
+
+
+def test_unparseable_stdout_is_a_clean_failure():
+    def fake_runner(argv, timeout):
+        return subprocess.CompletedProcess(argv, 0, "not json at all", "")
+
+    r = agy.run(_job(), _runner=fake_runner)
+    assert r.ok is False
+    assert "malformed" in r.error
+
+
+def test_timeout_is_a_clean_failure():
+    def fake_runner(argv, timeout):
+        raise subprocess.TimeoutExpired(argv, timeout)
+
+    r = agy.run(_job(), _runner=fake_runner)
+    assert r.ok is False
+    assert "timeout" in r.error.lower()
