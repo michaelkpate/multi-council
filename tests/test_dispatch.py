@@ -70,10 +70,15 @@ def test_jobs_actually_run_in_parallel():
     assert elapsed < 1.0
 
 
-def test_dry_run_prints_plan_and_spends_nothing(capsys, tmp_path):
+def test_dry_run_prints_plan_and_spends_nothing(capsys, tmp_path, monkeypatch):
     raw = {"jobs": [{"seat": "a", "transport": "openrouter", "model": "x/y", "prompt": "secret prompt"}]}
     jobs_file = tmp_path / "jobs.json"
     jobs_file.write_text(json.dumps(raw), encoding="utf-8")
+
+    def exploding(job):
+        raise AssertionError("dry-run must not invoke any adapter")
+
+    monkeypatch.setitem(dispatch.TRANSPORTS, "openrouter", exploding)
 
     rc = dispatch.main(["--jobs", str(jobs_file), "--dry-run"])
     out = capsys.readouterr().out
@@ -81,3 +86,5 @@ def test_dry_run_prints_plan_and_spends_nothing(capsys, tmp_path):
     assert rc == 0
     assert "openrouter" in out
     assert "x/y" in out
+    # The plan is printed, not the prompt itself — only its length.
+    assert "secret prompt" not in out
