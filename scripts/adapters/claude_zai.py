@@ -62,9 +62,18 @@ def run(job: Job, _runner=None) -> Result:
         return Result.failure(job, "timeout expired", time.monotonic() - start)
     except FileNotFoundError:
         return Result.failure(job, "claude not found on PATH", time.monotonic() - start)
+    except OSError as exc:
+        # Windows .cmd shims can raise PermissionError and friends. FileNotFoundError
+        # is an OSError subclass, so it must be caught above this clause.
+        detail = _redact(str(exc), api_key)
+        return Result.failure(
+            job, f"{type(exc).__name__}: {detail}", time.monotonic() - start
+        )
 
     if completed.returncode != 0:
-        detail = _redact((completed.stderr or "").strip()[:200], api_key)
+        # Redact BEFORE truncating. Truncating first can slice through the key
+        # and leave a partial secret in the error.
+        detail = _redact((completed.stderr or "").strip(), api_key)[:200]
         return Result.failure(
             job, f"exit {completed.returncode}: {detail}", time.monotonic() - start
         )

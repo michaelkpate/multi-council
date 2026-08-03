@@ -72,6 +72,7 @@ def test_successful_run_returns_stdout(monkeypatch):
         # Capture here, assert after run() returns: an AssertionError raised
         # inside the runner can be swallowed by an except clause in the adapter.
         seen["env"] = dict(env)
+        seen["argv"] = list(argv)
         return subprocess.CompletedProcess(argv, 0, "The weakest point is X.", "")
 
     r = claude_zai.run(_job(), _runner=fake_runner)
@@ -80,6 +81,8 @@ def test_successful_run_returns_stdout(monkeypatch):
     assert seen["env"]["ANTHROPIC_BASE_URL"] == claude_zai.ZAI_BASE_URL
     assert seen["env"]["ANTHROPIC_AUTH_TOKEN"] == "secret"
     assert seen["env"]["ANTHROPIC_DEFAULT_OPUS_MODEL"] == "glm-5.2"
+    assert seen["argv"][-2] == "-p"
+    assert seen["argv"][-1] == "Where is this plan weakest?"
 
 
 def test_nonzero_exit_is_a_clean_failure(monkeypatch):
@@ -101,3 +104,43 @@ def test_api_key_never_appears_in_error_text(monkeypatch):
 
     r = claude_zai.run(_job(), _runner=fake_runner)
     assert "super-secret-value" not in (r.error or "")
+
+
+def test_long_stderr_cannot_leak_a_straddling_key(monkeypatch):
+    """Redaction must happen before truncation, or a sliced key survives."""
+    monkeypatch.setenv("ZAI_API_KEY", "super-secret-value")
+
+    def fake_runner(argv, timeout, env):
+        # Place the key so it straddles the 200-character truncation boundary.
+        # 186 padding leaves 14 of the key's 18 characters inside the cut, so a
+        # truncate-then-redact implementation leaks "super-secret-v". At 190 the
+        # surviving slice is only "super-secr", which is short enough to sneak
+        # past the assertion below -- the padding has to be tuned deliberately.
+        stderr = "x" * 186 + "super-secret-value" + " trailing noise"
+        return subprocess.CompletedProcess(argv, 1, "", stderr)
+
+    r = claude_zai.run(_job(), _runner=fake_runner)
+    assert r.ok is False
+    assert "super-secret" not in (r.error or "")
+
+
+def test_timeout_is_a_clean_failure(monkeypatch):
+    monkeypatch.setenv("ZAI_API_KEY", "secret")
+
+    def fake_runner(argv, timeout, env):
+        raise subprocess.TimeoutExpired(argv, timeout)
+
+    r = claude_zai.run(_job(), _runner=fake_runner)
+    assert r.ok is False
+    assert "timeout" in r.error.lower()
+
+
+def test_os_error_is_a_clean_failure(monkeypatch):
+    monkeypatch.setenv("ZAI_API_KEY", "secret")
+
+    def fake_runner(argv, timeout, env):
+        raise PermissionError("access denied")
+
+    r = claude_zai.run(_job(), _runner=fake_runner)
+    assert r.ok is False
+    assert "PermissionError" in r.error
