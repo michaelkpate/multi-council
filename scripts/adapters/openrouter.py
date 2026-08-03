@@ -46,8 +46,9 @@ def run(job: Job, seed: int | None = None, _urlopen=None) -> Result:
         with urlopen(request, timeout=job.timeout_s) as response:
             body = json.loads(response.read().decode("utf-8"))
     except Exception as exc:  # network, timeout, HTTP error, bad JSON
+        detail = str(exc).replace(api_key, "<redacted>")
         return Result.failure(
-            job, f"{type(exc).__name__}: {exc}", time.monotonic() - start
+            job, f"{type(exc).__name__}: {detail}", time.monotonic() - start
         )
 
     try:

@@ -43,6 +43,13 @@ class Result:
 
     @classmethod
     def success(cls, job: Job, text: str | None, elapsed_s: float) -> "Result":
+        # A provider can return structured content (OpenAI-style content-parts
+        # arrays) instead of a string. Guard here, at the chokepoint, so that no
+        # adapter can raise on it.
+        if text is not None and not isinstance(text, str):
+            return cls.failure(
+                job, "malformed response: text is not a string", elapsed_s
+            )
         # An exit-0 run that produced no text is a failure, not a success.
         # Centralizing this here means every adapter gets the rule for free.
         if text is None or not text.strip():

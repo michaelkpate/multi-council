@@ -81,3 +81,15 @@ def test_network_error_is_a_clean_failure(monkeypatch):
     r = openrouter.run(_job(), _urlopen=fake_urlopen)
     assert r.ok is False
     assert "TimeoutError" in r.error
+
+
+def test_api_key_never_appears_in_error_text(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "super-secret-value")
+
+    def fake_urlopen(req, timeout=None):
+        raise RuntimeError("upstream rejected super-secret-value")
+
+    r = openrouter.run(_job(), _urlopen=fake_urlopen)
+    assert r.ok is False
+    assert "super-secret-value" not in (r.error or "")
+    assert "<redacted>" in r.error
