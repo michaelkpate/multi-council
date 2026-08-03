@@ -32,6 +32,7 @@ class Job:
     model: str
     prompt: str
     timeout_s: int
+    seed: int | None = None
 
 
 @dataclass(frozen=True)

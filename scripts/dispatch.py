@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 from adapters import agy, claude_zai, codex, openrouter
 from adapters.base import Job, Result
@@ -26,6 +26,9 @@ DEFAULT_TIMEOUTS = {
     "claude_zai": 90,
     "codex": 300,
 }
+
+# Grace period on top of a job's own timeout before the dispatcher gives up.
+DEADLINE_MARGIN_S = 15
 
 TRANSPORTS = {
     "openrouter": openrouter.run,
@@ -46,6 +49,7 @@ def load_jobs(raw: dict) -> list[Job]:
                 model=entry["model"],
                 prompt=entry["prompt"],
                 timeout_s=entry.get("timeout_s", DEFAULT_TIMEOUTS.get(transport, 60)),
+                seed=entry.get("seed"),
             )
         )
     return jobs
@@ -66,8 +70,26 @@ def run_jobs(jobs: list[Job], transports: dict | None = None) -> list[Result]:
     active = transports if transports is not None else TRANSPORTS
     if not jobs:
         return []
-    with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
-        return list(pool.map(lambda j: _run_one(j, active), jobs))
+
+    pool = ThreadPoolExecutor(max_workers=len(jobs))
+    try:
+        futures = [pool.submit(_run_one, job, active) for job in jobs]
+        results: list[Result] = []
+        for job, future in zip(jobs, futures):
+            # A hung transport must not hold the council. urllib's timeout is
+            # per socket operation, not a total deadline, so a slow drip never
+            # expires on its own.
+            try:
+                results.append(future.result(timeout=job.timeout_s + DEADLINE_MARGIN_S))
+            except FuturesTimeoutError:
+                results.append(
+                    Result.failure(job, "dispatcher deadline exceeded", 0.0)
+                )
+        return results
+    finally:
+        # Do not wait: a straggler thread would re-introduce the hang.
+        # The thread may outlive this call; that is deliberate.
+        pool.shutdown(wait=False)
 
 
 def main(argv: list[str]) -> int:

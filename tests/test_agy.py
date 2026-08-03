@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from adapters import agy
@@ -106,22 +108,33 @@ def test_os_error_is_a_clean_failure():
     assert "PermissionError" in r.error
 
 
-def test_executable_is_resolved_to_a_full_path(monkeypatch):
+def test_default_runner_resolves_the_executable(monkeypatch):
     """Windows CreateProcess will not find a .cmd shim by bare name."""
-    payload = {"status": "SUCCESS", "response": "Ship first.", "duration_seconds": 7.4}
     seen = {}
 
-    def fake_runner(argv, timeout):
+    def fake_subprocess_run(argv, **kwargs):
         seen["argv"] = list(argv)
-        return subprocess.CompletedProcess(argv, 0, json.dumps(payload), "")
+        return subprocess.CompletedProcess(argv, 0, "", "")
 
-    monkeypatch.setattr(agy, "resolve_executable", lambda name: r"C:\resolved\agy.CMD")
-    agy.run(_job(), _runner=fake_runner)
+    monkeypatch.setattr(agy, "resolve_executable", lambda n: r"C:\resolved\agy.CMD")
+    monkeypatch.setattr(agy.subprocess, "run", fake_subprocess_run)
+    agy._default_runner(["agy", "--print", "hi"], timeout=10)
     assert seen["argv"][0] == r"C:\resolved\agy.CMD"
+    assert seen["argv"][1:] == ["--print", "hi"]
 
 
-def test_unresolvable_executable_is_a_clean_failure(monkeypatch):
-    monkeypatch.setattr(agy, "resolve_executable", lambda name: None)
-    r = agy.run(_job())
+def test_default_runner_raises_when_unresolvable(monkeypatch):
+    monkeypatch.setattr(agy, "resolve_executable", lambda n: None)
+    with pytest.raises(FileNotFoundError):
+        agy._default_runner(["agy", "--print", "hi"], timeout=10)
+
+
+def test_unresolvable_executable_is_a_clean_failure():
+    """run() must still convert that into a Result, never an exception."""
+
+    def exploding_runner(argv, timeout):
+        raise FileNotFoundError("agy")
+
+    r = agy.run(_job(), _runner=exploding_runner)
     assert r.ok is False
     assert "not found on PATH" in r.error

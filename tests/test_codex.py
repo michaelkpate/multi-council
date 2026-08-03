@@ -2,6 +2,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from adapters import codex
@@ -101,25 +103,22 @@ def test_os_error_is_a_clean_failure():
     assert "PermissionError" in r.error
 
 
-def test_executable_is_resolved_to_a_full_path(monkeypatch):
+def test_default_runner_resolves_the_executable(monkeypatch):
     """Windows CreateProcess will not find a .cmd shim by bare name."""
     seen = {}
 
-    def fake_runner(argv, timeout):
+    def fake_subprocess_run(argv, **kwargs):
         seen["argv"] = list(argv)
-        out_path = argv[argv.index("-o") + 1]
-        Path(out_path).write_text("The plan is sound.", encoding="utf-8")
         return subprocess.CompletedProcess(argv, 0, "", "")
 
-    monkeypatch.setattr(
-        codex, "resolve_executable", lambda name: r"C:\resolved\codex.CMD"
-    )
-    codex.run(_job(), _runner=fake_runner)
+    monkeypatch.setattr(codex, "resolve_executable", lambda n: r"C:\resolved\codex.CMD")
+    monkeypatch.setattr(codex.subprocess, "run", fake_subprocess_run)
+    codex._default_runner(["codex", "exec", "hi"], timeout=10)
     assert seen["argv"][0] == r"C:\resolved\codex.CMD"
+    assert seen["argv"][1:] == ["exec", "hi"]
 
 
-def test_unresolvable_executable_is_a_clean_failure(monkeypatch):
-    monkeypatch.setattr(codex, "resolve_executable", lambda name: None)
-    r = codex.run(_job())
-    assert r.ok is False
-    assert "not found on PATH" in r.error
+def test_default_runner_raises_when_unresolvable(monkeypatch):
+    monkeypatch.setattr(codex, "resolve_executable", lambda n: None)
+    with pytest.raises(FileNotFoundError):
+        codex._default_runner(["codex", "exec", "hi"], timeout=10)

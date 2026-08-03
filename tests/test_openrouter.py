@@ -41,6 +41,23 @@ def test_payload_includes_seed_when_given():
     assert p["seed"] == 42
 
 
+def test_job_seed_reaches_the_payload(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    job = Job(seat="s", transport="openrouter", model="m", prompt="p", timeout_s=30, seed=7)
+    seen = {}
+
+    def fake_urlopen(req, timeout=None):
+        import io, json as _json
+        seen["payload"] = _json.loads(req.data.decode("utf-8"))
+        class R(io.BytesIO):
+            def __enter__(self): return self
+            def __exit__(self, *e): return False
+        return R(_json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8"))
+
+    openrouter.run(job, _urlopen=fake_urlopen)
+    assert seen["payload"]["seed"] == 7
+
+
 def test_missing_api_key_is_a_clean_failure(monkeypatch):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     r = openrouter.run(_job())

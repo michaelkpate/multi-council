@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from adapters import claude_zai
@@ -201,25 +203,38 @@ def test_os_error_is_a_clean_failure(monkeypatch):
     assert "PermissionError" in r.error
 
 
-def test_executable_is_resolved_to_a_full_path(monkeypatch):
+def test_default_runner_resolves_the_executable(monkeypatch):
     """Windows CreateProcess will not find a .cmd shim by bare name."""
-    monkeypatch.setenv("ZAI_API_KEY", "secret")
     seen = {}
 
-    def fake_runner(argv, timeout, env):
+    def fake_subprocess_run(argv, **kwargs):
         seen["argv"] = list(argv)
-        return subprocess.CompletedProcess(argv, 0, "The weakest point is X.", "")
+        return subprocess.CompletedProcess(argv, 0, "", "")
 
     monkeypatch.setattr(
-        claude_zai, "resolve_executable", lambda name: r"C:\resolved\claude.CMD"
+        claude_zai, "resolve_executable", lambda n: r"C:\resolved\claude.CMD"
     )
-    claude_zai.run(_job(), _runner=fake_runner)
+    monkeypatch.setattr(claude_zai.subprocess, "run", fake_subprocess_run)
+    claude_zai._default_runner(["claude", "-p", "hi"], timeout=10, env={"PATH": "/x"})
     assert seen["argv"][0] == r"C:\resolved\claude.CMD"
+    assert seen["argv"][1:] == ["-p", "hi"]
+
+
+def test_default_runner_raises_when_unresolvable(monkeypatch):
+    monkeypatch.setattr(claude_zai, "resolve_executable", lambda n: None)
+    with pytest.raises(FileNotFoundError):
+        claude_zai._default_runner(
+            ["claude", "-p", "hi"], timeout=10, env={"PATH": "/x"}
+        )
 
 
 def test_unresolvable_executable_is_a_clean_failure(monkeypatch):
+    """run() must still convert that into a Result, never an exception."""
     monkeypatch.setenv("ZAI_API_KEY", "secret")
-    monkeypatch.setattr(claude_zai, "resolve_executable", lambda name: None)
-    r = claude_zai.run(_job())
+
+    def exploding_runner(argv, timeout, env):
+        raise FileNotFoundError("claude")
+
+    r = claude_zai.run(_job(), _runner=exploding_runner)
     assert r.ok is False
     assert "not found on PATH" in r.error

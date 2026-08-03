@@ -25,6 +25,46 @@ def test_load_jobs_parses_and_defaults_timeout():
     assert jobs[1].timeout_s == 99
 
 
+def test_load_jobs_carries_an_optional_seed():
+    raw = {"jobs": [
+        {"seat": "a", "transport": "openrouter", "model": "x/y", "prompt": "q", "seed": 42},
+        {"seat": "b", "transport": "openrouter", "model": "x/y", "prompt": "q"},
+    ]}
+    jobs = dispatch.load_jobs(raw)
+    assert jobs[0].seed == 42
+    assert jobs[1].seed is None
+
+
+def test_a_hung_transport_does_not_hang_the_council():
+    import threading
+    release = threading.Event()
+
+    def hung(job):
+        release.wait(30)  # never released within the deadline
+        return Result.success(job, "too late", 0.0)
+
+    def quick(job):
+        return Result.success(job, "on time", 0.1)
+
+    jobs = [
+        Job(seat="slow", transport="hung", model="m", prompt="p", timeout_s=0),
+        Job(seat="fast", transport="quick", model="m", prompt="p", timeout_s=0),
+    ]
+    monkey_margin = dispatch.DEADLINE_MARGIN_S
+    dispatch.DEADLINE_MARGIN_S = 1
+    try:
+        results = dispatch.run_jobs(jobs, transports={"hung": hung, "quick": quick})
+    finally:
+        dispatch.DEADLINE_MARGIN_S = monkey_margin
+        release.set()
+
+    by_seat = {r.seat: r for r in results}
+    assert by_seat["slow"].ok is False
+    assert "deadline" in by_seat["slow"].error
+    assert by_seat["fast"].ok is True
+    assert [r.seat for r in results] == ["slow", "fast"]
+
+
 def test_run_jobs_returns_one_result_per_job_in_input_order():
     def fake(job: Job) -> Result:
         return Result.success(job, f"answer from {job.seat}", 0.1)

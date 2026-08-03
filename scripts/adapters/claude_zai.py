@@ -46,8 +46,14 @@ def build_argv(job: Job) -> list[str]:
 
 
 def _default_runner(argv: list[str], timeout: int, env: dict):
+    exe = resolve_executable(argv[0])
+    if exe is None:
+        # Windows CreateProcess appends .exe but not .cmd, so npm and shim
+        # installed CLIs are unfindable by bare name. Raise the same error
+        # subprocess would, so run()'s existing handler reports it uniformly.
+        raise FileNotFoundError(argv[0])
     return subprocess.run(
-        argv,
+        [exe, *argv[1:]],
         capture_output=True,
         text=True,
         timeout=timeout,
@@ -69,15 +75,9 @@ def run(job: Job, _runner=None) -> Result:
     runner = _runner or _default_runner
 
     argv = build_argv(job)
-    # Windows CreateProcess appends .exe but not .cmd, so a bare name never
-    # reaches the npm-installed claude.CMD. Resolve here, after build_argv, so
-    # the argv-shape invariants stay assertable on build_argv's own output.
-    exe = resolve_executable(argv[0])
-    if exe is None:
-        return Result.failure(
-            job, f"{argv[0]} not found on PATH", time.monotonic() - start
-        )
-    argv[0] = exe
+    # Executable resolution belongs to the runner that actually executes.
+    # An injected _runner supplies its own execution mechanism and must not
+    # be second-guessed here. See _default_runner.
 
     # The outer handler only sees failures from creating the temp config dir or
     # writing settings.json — every error inside the block returns instead of

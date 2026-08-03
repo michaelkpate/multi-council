@@ -66,7 +66,9 @@ required, and a bare array will fail:
 ```
 
 `seat`, `transport`, `model`, and `prompt` are all required. `timeout_s` is optional and
-defaults by transport. Every advisor's `prompt` is identical in the advise round.
+defaults by transport. `seed` is optional too and applies to `openrouter` seats only — set
+it when re-running a council so a changed answer traces to the changed question rather than
+to sampling noise. Every advisor's `prompt` is identical in the advise round.
 
 Then run:
 

@@ -31,9 +31,13 @@ def run(job: Job, seed: int | None = None, _urlopen=None) -> Result:
             job, "OPENROUTER_API_KEY not set in environment", time.monotonic() - start
         )
 
+    # The explicit parameter wins; the job's seed is the fallback, so a seed
+    # set in the jobs file actually reaches the payload.
+    effective_seed = seed if seed is not None else job.seed
+
     request = urllib.request.Request(
         API_URL,
-        data=json.dumps(build_payload(job, seed)).encode("utf-8"),
+        data=json.dumps(build_payload(job, effective_seed)).encode("utf-8"),
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
