@@ -9,14 +9,18 @@ from __future__ import annotations
 
 import os
 import subprocess
+import tempfile
 import time
+from pathlib import Path
 
 from .base import Job, Result, redact, resolve_executable
 
 ZAI_BASE_URL = "https://api.z.ai/api/anthropic"
 
 
-def build_env(base_env: dict, api_key: str, model: str) -> dict:
+def build_env(
+    base_env: dict, api_key: str, model: str, config_dir: str | None = None
+) -> dict:
     env = dict(base_env)  # copy; never mutate the caller's mapping
     env["ANTHROPIC_BASE_URL"] = ZAI_BASE_URL
     env["ANTHROPIC_AUTH_TOKEN"] = api_key
@@ -27,11 +31,18 @@ def build_env(base_env: dict, api_key: str, model: str) -> dict:
     # model while Result.model still claims glm-5.2.
     for conflicting in ("ANTHROPIC_MODEL", "ANTHROPIC_API_KEY"):
         env.pop(conflicting, None)
+    if config_dir is not None:
+        # Isolate from the user's global ~/.claude/settings.json, whose env
+        # block can override ANTHROPIC_* values we set here.
+        env["CLAUDE_CONFIG_DIR"] = config_dir
     return env
 
 
 def build_argv(job: Job) -> list[str]:
-    return ["claude", "-p", job.prompt]
+    # --model must be explicit: a global settings.json env block can set
+    # ANTHROPIC_MODEL, which outranks the ANTHROPIC_DEFAULT_OPUS_MODEL we pass
+    # in the subprocess environment. The prompt stays last, after -p.
+    return ["claude", "--model", job.model, "-p", job.prompt]
 
 
 def _default_runner(argv: list[str], timeout: int, env: dict):
@@ -56,7 +67,6 @@ def run(job: Job, _runner=None) -> Result:
         )
 
     runner = _runner or _default_runner
-    env = build_env(os.environ, api_key, job.model)
 
     argv = build_argv(job)
     # Windows CreateProcess appends .exe but not .cmd, so a bare name never
@@ -69,26 +79,54 @@ def run(job: Job, _runner=None) -> Result:
         )
     argv[0] = exe
 
+    # The outer handler only sees failures from creating the temp config dir or
+    # writing settings.json — every error inside the block returns instead of
+    # propagating. Without it, a disk failure here would raise out of run().
     try:
-        completed = runner(argv, timeout=job.timeout_s, env=env)
-    except subprocess.TimeoutExpired:
-        return Result.failure(job, "timeout expired", time.monotonic() - start)
-    except FileNotFoundError:
-        return Result.failure(job, "claude not found on PATH", time.monotonic() - start)
+        # ignore_cleanup_errors: on Windows a surviving grandchild process can
+        # still hold a file under the temp dir, and __exit__ would raise
+        # PermissionError out of run() — breaking the never-raise rule.
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as config_dir:
+            # An empty settings.json means the spawned claude has no env block
+            # to inherit; CLAUDE_CONFIG_DIR points it here instead of ~/.claude.
+            (Path(config_dir) / "settings.json").write_text("{}", encoding="utf-8")
+            env = build_env(os.environ, api_key, job.model, config_dir=config_dir)
+
+            try:
+                completed = runner(argv, timeout=job.timeout_s, env=env)
+            except subprocess.TimeoutExpired:
+                return Result.failure(job, "timeout expired", time.monotonic() - start)
+            except FileNotFoundError:
+                return Result.failure(
+                    job, "claude not found on PATH", time.monotonic() - start
+                )
+            except OSError as exc:
+                # Windows .cmd shims can raise PermissionError and friends.
+                # FileNotFoundError is an OSError subclass, so it must be caught
+                # above this clause.
+                detail = redact(str(exc), api_key)
+                return Result.failure(
+                    job, f"{type(exc).__name__}: {detail}", time.monotonic() - start
+                )
+
+            if completed.returncode != 0:
+                # claude writes API errors to stdout, not stderr. Include both,
+                # or every upstream API failure arrives as an empty message.
+                # Redact BEFORE truncating: truncating first can slice through
+                # the key and leave a partial secret in the error.
+                combined = (
+                    (completed.stderr or "") + " " + (completed.stdout or "")
+                ).strip()
+                detail = redact(combined, api_key)[:200]
+                return Result.failure(
+                    job,
+                    f"exit {completed.returncode}: {detail}",
+                    time.monotonic() - start,
+                )
+
+            return Result.success(job, completed.stdout, time.monotonic() - start)
     except OSError as exc:
-        # Windows .cmd shims can raise PermissionError and friends. FileNotFoundError
-        # is an OSError subclass, so it must be caught above this clause.
         detail = redact(str(exc), api_key)
         return Result.failure(
             job, f"{type(exc).__name__}: {detail}", time.monotonic() - start
         )
-
-    if completed.returncode != 0:
-        # Redact BEFORE truncating. Truncating first can slice through the key
-        # and leave a partial secret in the error.
-        detail = redact((completed.stderr or "").strip(), api_key)[:200]
-        return Result.failure(
-            job, f"exit {completed.returncode}: {detail}", time.monotonic() - start
-        )
-
-    return Result.success(job, completed.stdout, time.monotonic() - start)

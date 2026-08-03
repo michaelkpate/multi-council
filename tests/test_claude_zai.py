@@ -72,6 +72,45 @@ def test_prompt_is_the_value_of_dash_p():
     assert argv[-1] == "Where is this plan weakest?"
 
 
+def test_argv_passes_model_explicitly():
+    argv = claude_zai.build_argv(_job())
+    assert argv[argv.index("--model") + 1] == "glm-5.2"
+    assert argv[-2] == "-p"
+    assert argv[-1] == "Where is this plan weakest?"
+
+
+def test_build_env_sets_an_isolated_config_dir():
+    env = claude_zai.build_env({"PATH": "/usr/bin"}, "secret", "glm-5.2", config_dir="/tmp/cfg")
+    assert env["CLAUDE_CONFIG_DIR"] == "/tmp/cfg"
+
+
+def test_stdout_is_included_in_error_detail(monkeypatch):
+    """claude writes API errors to stdout; reporting only stderr hides them."""
+    monkeypatch.setenv("ZAI_API_KEY", "secret")
+
+    def fake_runner(argv, timeout, env):
+        return subprocess.CompletedProcess(
+            argv, 1, "API Error: 400 [1211][Unknown Model]", ""
+        )
+
+    r = claude_zai.run(_job(), _runner=fake_runner)
+    assert r.ok is False
+    assert "Unknown Model" in r.error
+
+
+def test_run_isolates_the_config_dir(monkeypatch):
+    monkeypatch.setenv("ZAI_API_KEY", "secret")
+    seen = {}
+
+    def fake_runner(argv, timeout, env):
+        seen["env"] = dict(env)
+        return subprocess.CompletedProcess(argv, 0, "answer", "")
+
+    claude_zai.run(_job(), _runner=fake_runner)
+    assert seen["env"]["CLAUDE_CONFIG_DIR"]
+    assert "ANTHROPIC_MODEL" not in seen["env"]
+
+
 def test_missing_key_is_a_clean_failure(monkeypatch):
     monkeypatch.delenv("ZAI_API_KEY", raising=False)
     r = claude_zai.run(_job())
