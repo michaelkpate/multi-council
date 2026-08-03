@@ -11,7 +11,7 @@ import os
 import subprocess
 import time
 
-from .base import Job, Result, redact
+from .base import Job, Result, redact, resolve_executable
 
 ZAI_BASE_URL = "https://api.z.ai/api/anthropic"
 
@@ -58,8 +58,19 @@ def run(job: Job, _runner=None) -> Result:
     runner = _runner or _default_runner
     env = build_env(os.environ, api_key, job.model)
 
+    argv = build_argv(job)
+    # Windows CreateProcess appends .exe but not .cmd, so a bare name never
+    # reaches the npm-installed claude.CMD. Resolve here, after build_argv, so
+    # the argv-shape invariants stay assertable on build_argv's own output.
+    exe = resolve_executable(argv[0])
+    if exe is None:
+        return Result.failure(
+            job, f"{argv[0]} not found on PATH", time.monotonic() - start
+        )
+    argv[0] = exe
+
     try:
-        completed = runner(build_argv(job), timeout=job.timeout_s, env=env)
+        completed = runner(argv, timeout=job.timeout_s, env=env)
     except subprocess.TimeoutExpired:
         return Result.failure(job, "timeout expired", time.monotonic() - start)
     except FileNotFoundError:

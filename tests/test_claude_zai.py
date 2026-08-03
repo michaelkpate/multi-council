@@ -160,3 +160,27 @@ def test_os_error_is_a_clean_failure(monkeypatch):
     r = claude_zai.run(_job(), _runner=fake_runner)
     assert r.ok is False
     assert "PermissionError" in r.error
+
+
+def test_executable_is_resolved_to_a_full_path(monkeypatch):
+    """Windows CreateProcess will not find a .cmd shim by bare name."""
+    monkeypatch.setenv("ZAI_API_KEY", "secret")
+    seen = {}
+
+    def fake_runner(argv, timeout, env):
+        seen["argv"] = list(argv)
+        return subprocess.CompletedProcess(argv, 0, "The weakest point is X.", "")
+
+    monkeypatch.setattr(
+        claude_zai, "resolve_executable", lambda name: r"C:\resolved\claude.CMD"
+    )
+    claude_zai.run(_job(), _runner=fake_runner)
+    assert seen["argv"][0] == r"C:\resolved\claude.CMD"
+
+
+def test_unresolvable_executable_is_a_clean_failure(monkeypatch):
+    monkeypatch.setenv("ZAI_API_KEY", "secret")
+    monkeypatch.setattr(claude_zai, "resolve_executable", lambda name: None)
+    r = claude_zai.run(_job())
+    assert r.ok is False
+    assert "not found on PATH" in r.error

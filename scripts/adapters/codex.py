@@ -7,7 +7,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from .base import Job, Result
+from .base import Job, Result, resolve_executable
 
 
 def build_argv(job: Job, out_file: str, effort: str = "high") -> list[str]:
@@ -51,8 +51,20 @@ def run(job: Job, _runner=None) -> Result:
     # run() — the one path where this adapter could break the never-raise rule.
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         out_file = str(Path(tmpdir) / "codex-out.txt")
+
+        argv = build_argv(job, out_file)
+        # Windows CreateProcess appends .exe but not .cmd, so a bare name never
+        # reaches codex.CMD. Resolve here, after build_argv, so the argv-shape
+        # invariants stay assertable on build_argv's own output.
+        exe = resolve_executable(argv[0])
+        if exe is None:
+            return Result.failure(
+                job, f"{argv[0]} not found on PATH", time.monotonic() - start
+            )
+        argv[0] = exe
+
         try:
-            completed = runner(build_argv(job, out_file), timeout=job.timeout_s)
+            completed = runner(argv, timeout=job.timeout_s)
         except subprocess.TimeoutExpired:
             return Result.failure(job, "timeout expired", time.monotonic() - start)
         except FileNotFoundError:

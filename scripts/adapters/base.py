@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
+import shutil
 from dataclasses import asdict, dataclass
+
+
+def resolve_executable(name: str) -> str | None:
+    """Resolve a command name to a full path.
+
+    Windows CreateProcess appends .exe but not .cmd, so npm and shim-installed
+    CLIs fail when invoked by bare name even though they are on PATH.
+    shutil.which applies PATHEXT and finds them. No-op on POSIX.
+    """
+    return shutil.which(name)
 
 
 def redact(text: str, secret: str | None) -> str:
