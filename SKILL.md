@@ -50,7 +50,25 @@ plainly. If you think it is obviously right, say that.
 and role, nothing would distinguish model-driven disagreement from role-driven disagreement,
 and you would report manufactured conflict as genuine uncertainty.
 
-Write the jobs to a temp file and run:
+Write the jobs to a temp file in exactly this shape — the top-level `jobs` key is
+required, and a bare array will fail:
+
+```json
+{
+  "jobs": [
+    {"seat": "gpt",      "transport": "codex",      "model": "gpt-5.6-luna",                   "prompt": "<advisor prompt>"},
+    {"seat": "gemini",   "transport": "agy",        "model": "gemini-3.1-pro-high",            "prompt": "<advisor prompt>"},
+    {"seat": "glm",      "transport": "claude_zai", "model": "glm-5.2",                        "prompt": "<advisor prompt>"},
+    {"seat": "deepseek", "transport": "openrouter", "model": "deepseek/deepseek-v4-flash-0731", "prompt": "<advisor prompt>"},
+    {"seat": "inkling",  "transport": "openrouter", "model": "thinkingmachines/inkling-small",  "prompt": "<advisor prompt>"}
+  ]
+}
+```
+
+`seat`, `transport`, `model`, and `prompt` are all required. `timeout_s` is optional and
+defaults by transport. Every advisor's `prompt` is identical in the advise round.
+
+Then run:
 
 ```bash
 python multi-council/scripts/dispatch.py --jobs <tmp>/advise.json
@@ -88,7 +106,7 @@ tell the user the council could not be seated — do not synthesize.
 You now hold the de-anonymized responses and all reviews. Write the verdict directly into
 chat. No files, no HTML.
 
-Four rules, and the first two are the reason this skill exists:
+Five rules, and the first two are the reason this skill exists:
 
 **Lead with divergence.** Where advisors disagreed is the highest-information part of the
 run. It is the part that cannot be explained by shared training data.
@@ -138,4 +156,5 @@ advisor because it *emits* text.
 - `codex` seats need `codex login status` to report logged in
 - `agy` seats need Antigravity installed and signed in
 
-Check a roster without spending anything: `python dispatch.py --jobs <file> --dry-run`
+Check a roster without spending anything:
+`python multi-council/scripts/dispatch.py --jobs <file> --dry-run`
