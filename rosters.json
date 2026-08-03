@@ -1,0 +1,32 @@
+{
+  "reference": {
+    "description": "Uses ChatGPT Plus, Google One, and a Z.ai Coding Plan. ~half a cent per run.",
+    "advisors": [
+      {"seat": "gpt",      "transport": "codex",      "model": "gpt-5.6-luna"},
+      {"seat": "gemini",   "transport": "agy",        "model": "gemini-3.1-pro-high"},
+      {"seat": "glm",      "transport": "claude_zai", "model": "glm-5.2"},
+      {"seat": "deepseek", "transport": "openrouter", "model": "deepseek/deepseek-v4-flash-0731"},
+      {"seat": "inkling",  "transport": "openrouter", "model": "thinkingmachines/inkling-small"}
+    ]
+  },
+  "zero_subscription": {
+    "description": "No subscriptions required. OpenRouter only. ~2-3 cents per run.",
+    "advisors": [
+      {"seat": "deepseek", "transport": "openrouter", "model": "deepseek/deepseek-v4-flash-0731"},
+      {"seat": "inkling",  "transport": "openrouter", "model": "thinkingmachines/inkling-small"},
+      {"seat": "longcat",  "transport": "openrouter", "model": "meituan/longcat-2.0"},
+      {"seat": "qwen",     "transport": "openrouter", "model": "qwen/qwen3.7-plus"},
+      {"seat": "glm",      "transport": "openrouter", "model": "z-ai/glm-5.2"}
+    ]
+  },
+  "frontier": {
+    "description": "All OpenRouter, frontier tier. ~9-10 cents per run.",
+    "advisors": [
+      {"seat": "gpt",      "transport": "openrouter", "model": "openai/gpt-5.6-terra"},
+      {"seat": "gemini",   "transport": "openrouter", "model": "google/gemini-3.6-flash"},
+      {"seat": "deepseek", "transport": "openrouter", "model": "deepseek/deepseek-v4-pro"},
+      {"seat": "glm",      "transport": "openrouter", "model": "z-ai/glm-5.2"},
+      {"seat": "grok",     "transport": "openrouter", "model": "x-ai/grok-4.3"}
+    ]
+  }
+}

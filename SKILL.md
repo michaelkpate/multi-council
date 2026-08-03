@@ -1,0 +1,141 @@
+---
+name: multi-council
+description: "Run a decision through five advisors on five different models from five different labs, have them peer-review each other anonymously, and synthesize a divergence-first verdict. Use when the user says 'multi-council this', 'run the multi council', 'cross-model council', or presents a high-stakes decision with real tradeoffs where a single vendor's blind spots would be invisible. Do NOT use for factual lookups, creation tasks, or decisions with one clear right answer."
+---
+
+# multi-council
+
+Five advisors. Five different models. Five different labs. Claude chairs and never advises.
+
+The point is decorrelation. Five sub-agents on one model share weights, priors, and blind
+spots — whatever disagreement they produce was scripted by their prompts. Five models from
+five labs disagree because they actually see the question differently.
+
+## When to run it
+
+Worth it when being wrong is expensive and the answer is genuinely uncertain. Not worth it
+for lookups, creation tasks, or anything with one right answer. Each run takes a few minutes
+and costs between half a cent and a dime.
+
+## Step 1 — Frame the question
+
+Read the user's question. Scan the workspace for context that would ground the advisors:
+`CLAUDE.md`, `AGENTS.md`, a `memory/` directory, files the user referenced. Spend under 30
+seconds.
+
+Write ONE neutral framed question containing the core decision, relevant context, and what's
+at stake. **Add no opinion and no steer.** If the question is too vague to frame, ask one
+clarifying question, then proceed.
+
+## Step 2 — Advise round
+
+Pick a roster from `rosters.json` (default `reference`; use `zero_subscription` if the user
+has no coding subscriptions). Build a jobs file where **every advisor gets the identical
+prompt**:
+
+```
+You are an advisor on a council. Another advisor's answer will not be shown to you.
+
+QUESTION:
+<framed question>
+
+Give your honest assessment. Commit to a position — do not hedge, do not present a balanced
+survey of options, do not caveat your way to safety. If you think this is a mistake, say so
+plainly. If you think it is obviously right, say that.
+
+150-300 words. No preamble.
+```
+
+**Do not assign roles.** No Contrarian, no Expansionist. If advisors differed in both model
+and role, nothing would distinguish model-driven disagreement from role-driven disagreement,
+and you would report manufactured conflict as genuine uncertainty.
+
+Write the jobs to a temp file and run:
+
+```bash
+python multi-council/scripts/dispatch.py --jobs <tmp>/advise.json
+```
+
+## Step 3 — Review round
+
+Take the responses where `ok` is true. Assign them letters A–E **with the mapping shuffled**,
+so position carries no information. Send every advisor this prompt:
+
+```
+Five advisors answered the question below. Their responses are anonymized.
+
+QUESTION:
+<framed question>
+
+RESPONSE A:
+<text>
+
+... (through E)
+
+Answer three questions, referencing responses by letter:
+1. Which response is strongest, and why?
+2. Which has the biggest blind spot, and what is it missing?
+3. What did ALL of them miss?
+
+Under 200 words. Be direct.
+```
+
+Dispatch the same way. If fewer than three advisors responded in Step 2, **stop here** and
+tell the user the council could not be seated — do not synthesize.
+
+## Step 4 — Synthesize
+
+You now hold the de-anonymized responses and all reviews. Write the verdict directly into
+chat. No files, no HTML.
+
+Four rules, and the first two are the reason this skill exists:
+
+**Lead with divergence.** Where advisors disagreed is the highest-information part of the
+run. It is the part that cannot be explained by shared training data.
+
+**Treat unanimity as a flag, not as confidence.** These models share pretraining sources and
+similar alignment pressure. Their errors are correlated, so agreement may be a shared blind
+spot rather than a converged truth. Synthesis *promotes* correlated errors, because agreement
+reads as confidence. When all five agree, say so — and say that it warrants a check for
+shared priors rather than treating it as settled.
+
+**Never count votes.** No tallies, no majorities. A 4–1 split is not 80% confidence. Side
+with a lone dissenter when its reasoning is strongest, and say when you do.
+
+**Flag responses that missed the question.** No script can catch this — a fluent answer to
+the wrong question is indistinguishable from a correct one without reading it. If a response
+does not engage the framed question, say so and exclude it from the verdict rather than
+folding it in. The `agy` transport in particular can return a confident answer to the wrong
+prompt with a success status.
+
+**Name the empty seats.** If a model failed, report which and why. **Never write a response
+for a seat that did not answer.**
+
+Output:
+
+```
+## Council Verdict: <topic>
+
+### Where the Council Diverged
+### What Only One Advisor Saw
+### Where the Council Agreed
+### The Recommendation
+### The One Thing to Do First
+### Seats
+```
+
+## Setup
+
+- `OPENROUTER_API_KEY` — required for any `openrouter` seat
+- `ZAI_API_KEY` — required only for the `claude_zai` seat
+
+If you swap in a different OpenRouter model, check that its `architecture.modality`
+ends in `->text`. OpenRouter carries image, video, speech, embedding, and rerank models
+alongside text ones, and a non-text seat produces a failed or garbage advisor. Filter on
+modality, never on the model's name — `cogview-4` and `vidu-q1` have no "image" in their
+names, while `inkling-small` reports `text+image+audio->text` and is a perfectly good
+advisor because it *emits* text.
+- `codex` seats need `codex login status` to report logged in
+- `agy` seats need Antigravity installed and signed in
+
+Check a roster without spending anything: `python dispatch.py --jobs <file> --dry-run`
