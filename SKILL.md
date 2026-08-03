@@ -80,7 +80,7 @@ Take the responses where `ok` is true. Assign them letters A–E **with the mapp
 so position carries no information. Send every advisor this prompt:
 
 ```
-Five advisors answered the question below. Their responses are anonymized.
+The advisors below answered the question. Their responses are anonymized.
 
 QUESTION:
 <framed question>
@@ -88,7 +88,7 @@ QUESTION:
 RESPONSE A:
 <text>
 
-... (through E)
+... (one block per responding advisor, lettered from A)
 
 Answer three questions, referencing responses by letter:
 1. Which response is strongest, and why?
@@ -97,6 +97,9 @@ Answer three questions, referencing responses by letter:
 
 Under 200 words. Be direct.
 ```
+
+Letter only the advisors that actually responded — never leave a placeholder for a seat that
+failed.
 
 Dispatch the same way. If fewer than three advisors responded in Step 2, **stop here** and
 tell the user the council could not be seated — do not synthesize.

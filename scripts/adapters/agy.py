@@ -32,7 +32,13 @@ def build_argv(job: Job) -> list[str]:
 
 def _default_runner(argv: list[str], timeout: int):
     return subprocess.run(
-        argv, capture_output=True, text=True, timeout=timeout, encoding="utf-8"
+        argv,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        encoding="utf-8",
+        errors="replace",
+        stdin=subprocess.DEVNULL,
     )
 
 
@@ -46,6 +52,12 @@ def run(job: Job, _runner=None) -> Result:
         return Result.failure(job, "timeout expired", time.monotonic() - start)
     except FileNotFoundError:
         return Result.failure(job, "agy not found on PATH", time.monotonic() - start)
+    except OSError as exc:
+        # Windows .cmd shims can raise PermissionError and friends. FileNotFoundError
+        # is an OSError subclass, so it must be caught above this clause.
+        return Result.failure(
+            job, f"{type(exc).__name__}: {exc}", time.monotonic() - start
+        )
 
     if completed.returncode != 0:
         detail = (completed.stderr or "").strip()[:200]
@@ -59,6 +71,14 @@ def run(job: Job, _runner=None) -> Result:
     except (json.JSONDecodeError, KeyError, TypeError) as exc:
         return Result.failure(
             job, f"malformed agy output: {exc}", time.monotonic() - start
+        )
+
+    # `status` is the only field that distinguishes a real answer from a fluent
+    # answer to the wrong question. Dropping it makes a non-success invisible.
+    status = body.get("status")
+    if status is not None and status != "SUCCESS":
+        return Result.failure(
+            job, f"agy reported status {status}", time.monotonic() - start
         )
 
     return Result.success(job, text, time.monotonic() - start)

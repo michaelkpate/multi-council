@@ -5,6 +5,13 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 
 
+def redact(text: str, secret: str | None) -> str:
+    """Remove a secret from text before it reaches any Result."""
+    if not secret:
+        return text
+    return text.replace(secret, "<redacted>")
+
+
 @dataclass(frozen=True)
 class Job:
     """One advisor seat's work: which model, via which transport, with what prompt."""

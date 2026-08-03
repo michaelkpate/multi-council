@@ -11,7 +11,7 @@ import os
 import subprocess
 import time
 
-from .base import Job, Result
+from .base import Job, Result, redact
 
 ZAI_BASE_URL = "https://api.z.ai/api/anthropic"
 
@@ -21,6 +21,12 @@ def build_env(base_env: dict, api_key: str, model: str) -> dict:
     env["ANTHROPIC_BASE_URL"] = ZAI_BASE_URL
     env["ANTHROPIC_AUTH_TOKEN"] = api_key
     env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = model
+    # Inherited values outrank the ones we set: ANTHROPIC_MODEL beats
+    # ANTHROPIC_DEFAULT_OPUS_MODEL, and ANTHROPIC_API_KEY can beat
+    # ANTHROPIC_AUTH_TOKEN. Leaving them would silently answer from the wrong
+    # model while Result.model still claims glm-5.2.
+    for conflicting in ("ANTHROPIC_MODEL", "ANTHROPIC_API_KEY"):
+        env.pop(conflicting, None)
     return env
 
 
@@ -38,10 +44,6 @@ def _default_runner(argv: list[str], timeout: int, env: dict):
         env=env,
         stdin=subprocess.DEVNULL,
     )
-
-
-def _redact(text: str, secret: str) -> str:
-    return text.replace(secret, "<redacted>") if secret else text
 
 
 def run(job: Job, _runner=None) -> Result:
@@ -65,7 +67,7 @@ def run(job: Job, _runner=None) -> Result:
     except OSError as exc:
         # Windows .cmd shims can raise PermissionError and friends. FileNotFoundError
         # is an OSError subclass, so it must be caught above this clause.
-        detail = _redact(str(exc), api_key)
+        detail = redact(str(exc), api_key)
         return Result.failure(
             job, f"{type(exc).__name__}: {detail}", time.monotonic() - start
         )
@@ -73,7 +75,7 @@ def run(job: Job, _runner=None) -> Result:
     if completed.returncode != 0:
         # Redact BEFORE truncating. Truncating first can slice through the key
         # and leave a partial secret in the error.
-        detail = _redact((completed.stderr or "").strip(), api_key)[:200]
+        detail = redact((completed.stderr or "").strip(), api_key)[:200]
         return Result.failure(
             job, f"exit {completed.returncode}: {detail}", time.monotonic() - start
         )

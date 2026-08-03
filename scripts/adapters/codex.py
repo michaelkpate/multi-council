@@ -37,6 +37,7 @@ def _default_runner(argv: list[str], timeout: int):
         text=True,
         timeout=timeout,
         encoding="utf-8",
+        errors="replace",
         stdin=subprocess.DEVNULL,
     )
 
@@ -58,6 +59,13 @@ def run(job: Job, _runner=None) -> Result:
             return Result.failure(
                 job, "codex not found on PATH", time.monotonic() - start
             )
+        except OSError as exc:
+            # Windows .cmd shims can raise PermissionError and friends.
+            # FileNotFoundError is an OSError subclass, so it must be caught
+            # above this clause.
+            return Result.failure(
+                job, f"{type(exc).__name__}: {exc}", time.monotonic() - start
+            )
 
         if completed.returncode != 0:
             detail = (completed.stderr or "").strip()[:200]
@@ -70,6 +78,8 @@ def run(job: Job, _runner=None) -> Result:
             return Result.failure(
                 job, "no output file written by codex", time.monotonic() - start
             )
-        text = path.read_text(encoding="utf-8")
+        # errors="replace": a strict decode of non-UTF-8 CLI output would raise
+        # UnicodeDecodeError out of run(), breaking the never-raise rule.
+        text = path.read_text(encoding="utf-8", errors="replace")
 
     return Result.success(job, text, time.monotonic() - start)

@@ -93,3 +93,22 @@ def test_api_key_never_appears_in_error_text(monkeypatch):
     assert r.ok is False
     assert "super-secret-value" not in (r.error or "")
     assert "<redacted>" in r.error
+
+
+def test_malformed_response_path_also_redacts(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "super-secret-value")
+
+    class _Weird:
+        def __getitem__(self, k):
+            raise KeyError("choices missing near super-secret-value")
+
+    def fake_urlopen(req, timeout=None):
+        import io, json as _json
+        class R(io.BytesIO):
+            def __enter__(self): return self
+            def __exit__(self, *e): return False
+        return R(_json.dumps({"unexpected": True}).encode("utf-8"))
+
+    r = openrouter.run(_job(), _urlopen=fake_urlopen)
+    assert r.ok is False
+    assert "super-secret-value" not in (r.error or "")

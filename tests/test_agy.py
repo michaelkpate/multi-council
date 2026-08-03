@@ -84,3 +84,23 @@ def test_timeout_is_a_clean_failure():
     r = agy.run(_job(), _runner=fake_runner)
     assert r.ok is False
     assert "timeout" in r.error.lower()
+
+
+def test_non_success_status_is_a_failure():
+    payload = {"status": "ERROR", "response": "some plausible text", "duration_seconds": 1.0}
+
+    def fake_runner(argv, timeout):
+        return subprocess.CompletedProcess(argv, 0, json.dumps(payload), "")
+
+    r = agy.run(_job(), _runner=fake_runner)
+    assert r.ok is False
+    assert "ERROR" in r.error
+
+
+def test_os_error_is_a_clean_failure():
+    def fake_runner(argv, timeout):
+        raise PermissionError("access denied")
+
+    r = agy.run(_job(), _runner=fake_runner)
+    assert r.ok is False
+    assert "PermissionError" in r.error

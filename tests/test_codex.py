@@ -90,3 +90,12 @@ def test_missing_binary_is_a_clean_failure():
     r = codex.run(_job(), _runner=fake_runner)
     assert r.ok is False
     assert "not found" in r.error
+
+
+def test_os_error_is_a_clean_failure():
+    def fake_runner(argv, timeout):
+        raise PermissionError("access denied")
+
+    r = codex.run(_job(), _runner=fake_runner)
+    assert r.ok is False
+    assert "PermissionError" in r.error

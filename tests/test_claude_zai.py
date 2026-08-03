@@ -27,6 +27,22 @@ def test_build_env_sets_the_three_required_variables():
     assert env["PATH"] == "/usr/bin"
 
 
+def test_conflicting_inherited_vars_are_cleared():
+    base = {
+        "PATH": "/usr/bin",
+        "ANTHROPIC_MODEL": "some-other-model",
+        "ANTHROPIC_API_KEY": "inherited-key",
+    }
+    env = claude_zai.build_env(base, "secret", "glm-5.2")
+    assert "ANTHROPIC_MODEL" not in env
+    assert "ANTHROPIC_API_KEY" not in env
+    assert env["ANTHROPIC_DEFAULT_OPUS_MODEL"] == "glm-5.2"
+    assert env["ANTHROPIC_AUTH_TOKEN"] == "secret"
+    assert env["PATH"] == "/usr/bin"
+    # The caller's mapping must still be untouched.
+    assert base["ANTHROPIC_MODEL"] == "some-other-model"
+
+
 def test_build_env_does_not_mutate_the_parent_environment(monkeypatch):
     """Leaking these into the parent repoints the running Claude session."""
     monkeypatch.setenv("ZAI_API_KEY", "secret")
