@@ -41,15 +41,22 @@ def test_model_and_json_format_are_passed():
     assert argv[argv.index("--output-format") + 1] == "json"
 
 
-def test_successful_run_extracts_response(monkeypatch):
+def test_successful_run_extracts_response():
     payload = {"status": "SUCCESS", "response": "Ship first.", "duration_seconds": 7.4}
+    seen = {}
 
     def fake_runner(argv, timeout):
+        seen["argv"] = list(argv)
         return subprocess.CompletedProcess(argv, 0, json.dumps(payload), "")
 
     r = agy.run(_job(), _runner=fake_runner)
     assert r.ok is True
     assert r.text == "Ship first."
+    # The invariant must hold on the argv that actually reaches the subprocess,
+    # not merely on what build_argv returned. Without this, run() could append
+    # a flag after the prompt and every other test would still pass.
+    assert seen["argv"][-2] == "--print"
+    assert seen["argv"][-1] == "Should I refactor now or ship first?"
 
 
 def test_nonzero_exit_is_a_clean_failure():
