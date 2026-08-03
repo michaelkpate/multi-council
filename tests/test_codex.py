@@ -27,9 +27,10 @@ def test_argv_uses_readonly_sandbox_and_json():
 
 
 def test_argv_passes_model_and_effort_as_config_overrides():
-    argv = codex.build_argv(_job(), "/tmp/out.txt", effort="high")
+    # effort must be non-default here, or a hardcoded "high" would pass.
+    argv = codex.build_argv(_job(), "/tmp/out.txt", effort="low")
     assert "model=gpt-5.6-luna" in argv
-    assert "model_reasoning_effort=high" in argv
+    assert "model_reasoning_effort=low" in argv
 
 
 def test_prompt_is_last_and_output_file_is_flagged():
@@ -39,7 +40,10 @@ def test_prompt_is_last_and_output_file_is_flagged():
 
 
 def test_successful_run_reads_the_output_file():
+    seen = {}
+
     def fake_runner(argv, timeout):
+        seen["argv"] = list(argv)
         out_path = argv[argv.index("-o") + 1]
         Path(out_path).write_text("The plan is sound.", encoding="utf-8")
         return subprocess.CompletedProcess(argv, 0, "", "")
@@ -47,6 +51,9 @@ def test_successful_run_reads_the_output_file():
     r = codex.run(_job(), _runner=fake_runner)
     assert r.ok is True
     assert r.text == "The plan is sound."
+    # Pin the argv that actually reaches the subprocess, not just build_argv's
+    # return value — the same guard test_agy.py carries.
+    assert seen["argv"][-1] == "Assess this plan."
 
 
 def test_nonzero_exit_is_a_clean_failure():
@@ -65,3 +72,21 @@ def test_missing_output_file_is_a_clean_failure():
     r = codex.run(_job(), _runner=fake_runner)
     assert r.ok is False
     assert "no output" in r.error
+
+
+def test_timeout_is_a_clean_failure():
+    def fake_runner(argv, timeout):
+        raise subprocess.TimeoutExpired(argv, timeout)
+
+    r = codex.run(_job(), _runner=fake_runner)
+    assert r.ok is False
+    assert "timeout" in r.error.lower()
+
+
+def test_missing_binary_is_a_clean_failure():
+    def fake_runner(argv, timeout):
+        raise FileNotFoundError("codex")
+
+    r = codex.run(_job(), _runner=fake_runner)
+    assert r.ok is False
+    assert "not found" in r.error

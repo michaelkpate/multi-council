@@ -45,7 +45,10 @@ def run(job: Job, _runner=None) -> Result:
     start = time.monotonic()
     runner = _runner or _default_runner
 
-    with tempfile.TemporaryDirectory() as tmpdir:
+    # ignore_cleanup_errors: on Windows a surviving grandchild process can still
+    # hold the output file, and __exit__ would raise PermissionError out of
+    # run() — the one path where this adapter could break the never-raise rule.
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         out_file = str(Path(tmpdir) / "codex-out.txt")
         try:
             completed = runner(build_argv(job, out_file), timeout=job.timeout_s)
