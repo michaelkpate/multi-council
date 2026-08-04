@@ -61,24 +61,23 @@ def test_build_env_does_not_mutate_the_parent_environment(monkeypatch):
     # legitimately define ANTHROPIC_BASE_URL (pointing at Anthropic).
     claude_zai.run(
         _job(),
-        _runner=lambda argv, timeout, env: subprocess.CompletedProcess(
+        _runner=lambda argv, timeout, env, input_text: subprocess.CompletedProcess(
             argv, 0, "ok", ""
         ),
     )
     assert dict(os.environ) == before
 
 
-def test_prompt_is_the_value_of_dash_p():
+def test_prompt_is_not_in_argv():
     argv = claude_zai.build_argv(_job())
-    assert argv[-2] == "-p"
-    assert argv[-1] == "Where is this plan weakest?"
+    assert argv[-1] == "-p"
+    assert "Where is this plan weakest?" not in argv
 
 
 def test_argv_passes_model_explicitly():
     argv = claude_zai.build_argv(_job())
     assert argv[argv.index("--model") + 1] == "glm-5.2"
-    assert argv[-2] == "-p"
-    assert argv[-1] == "Where is this plan weakest?"
+    assert argv[-1] == "-p"
 
 
 def test_build_env_sets_an_isolated_config_dir():
@@ -90,7 +89,7 @@ def test_stdout_is_included_in_error_detail(monkeypatch):
     """claude writes API errors to stdout; reporting only stderr hides them."""
     monkeypatch.setenv("ZAI_API_KEY", "secret")
 
-    def fake_runner(argv, timeout, env):
+    def fake_runner(argv, timeout, env, input_text):
         return subprocess.CompletedProcess(
             argv, 1, "API Error: 400 [1211][Unknown Model]", ""
         )
@@ -104,7 +103,7 @@ def test_run_isolates_the_config_dir(monkeypatch):
     monkeypatch.setenv("ZAI_API_KEY", "secret")
     seen = {}
 
-    def fake_runner(argv, timeout, env):
+    def fake_runner(argv, timeout, env, input_text):
         seen["env"] = dict(env)
         return subprocess.CompletedProcess(argv, 0, "answer", "")
 
@@ -125,11 +124,12 @@ def test_successful_run_returns_stdout(monkeypatch):
 
     seen = {}
 
-    def fake_runner(argv, timeout, env):
+    def fake_runner(argv, timeout, env, input_text):
         # Capture here, assert after run() returns: an AssertionError raised
         # inside the runner can be swallowed by an except clause in the adapter.
         seen["env"] = dict(env)
         seen["argv"] = list(argv)
+        seen["input"] = input_text
         return subprocess.CompletedProcess(argv, 0, "The weakest point is X.", "")
 
     r = claude_zai.run(_job(), _runner=fake_runner)
@@ -138,14 +138,14 @@ def test_successful_run_returns_stdout(monkeypatch):
     assert seen["env"]["ANTHROPIC_BASE_URL"] == claude_zai.ZAI_BASE_URL
     assert seen["env"]["ANTHROPIC_AUTH_TOKEN"] == "secret"
     assert seen["env"]["ANTHROPIC_DEFAULT_OPUS_MODEL"] == "glm-5.2"
-    assert seen["argv"][-2] == "-p"
-    assert seen["argv"][-1] == "Where is this plan weakest?"
+    assert seen["argv"][-1] == "-p"
+    assert seen["input"] == "Where is this plan weakest?"
 
 
 def test_nonzero_exit_is_a_clean_failure(monkeypatch):
     monkeypatch.setenv("ZAI_API_KEY", "secret")
 
-    def fake_runner(argv, timeout, env):
+    def fake_runner(argv, timeout, env, input_text):
         return subprocess.CompletedProcess(argv, 1, "", "rate limited")
 
     r = claude_zai.run(_job(), _runner=fake_runner)
@@ -156,7 +156,7 @@ def test_nonzero_exit_is_a_clean_failure(monkeypatch):
 def test_api_key_never_appears_in_error_text(monkeypatch):
     monkeypatch.setenv("ZAI_API_KEY", "super-secret-value")
 
-    def fake_runner(argv, timeout, env):
+    def fake_runner(argv, timeout, env, input_text):
         return subprocess.CompletedProcess(argv, 1, "", "failed with super-secret-value")
 
     r = claude_zai.run(_job(), _runner=fake_runner)
@@ -167,7 +167,7 @@ def test_long_stderr_cannot_leak_a_straddling_key(monkeypatch):
     """Redaction must happen before truncation, or a sliced key survives."""
     monkeypatch.setenv("ZAI_API_KEY", "super-secret-value")
 
-    def fake_runner(argv, timeout, env):
+    def fake_runner(argv, timeout, env, input_text):
         # Place the key so it straddles the 200-character truncation boundary.
         # 186 padding leaves 14 of the key's 18 characters inside the cut, so a
         # truncate-then-redact implementation leaks "super-secret-v". At 190 the
@@ -184,7 +184,7 @@ def test_long_stderr_cannot_leak_a_straddling_key(monkeypatch):
 def test_timeout_is_a_clean_failure(monkeypatch):
     monkeypatch.setenv("ZAI_API_KEY", "secret")
 
-    def fake_runner(argv, timeout, env):
+    def fake_runner(argv, timeout, env, input_text):
         raise subprocess.TimeoutExpired(argv, timeout)
 
     r = claude_zai.run(_job(), _runner=fake_runner)
@@ -195,7 +195,7 @@ def test_timeout_is_a_clean_failure(monkeypatch):
 def test_os_error_is_a_clean_failure(monkeypatch):
     monkeypatch.setenv("ZAI_API_KEY", "secret")
 
-    def fake_runner(argv, timeout, env):
+    def fake_runner(argv, timeout, env, input_text):
         raise PermissionError("access denied")
 
     r = claude_zai.run(_job(), _runner=fake_runner)
@@ -215,7 +215,9 @@ def test_default_runner_resolves_the_executable(monkeypatch):
         claude_zai, "resolve_executable", lambda n: r"C:\resolved\claude.CMD"
     )
     monkeypatch.setattr(claude_zai.subprocess, "run", fake_subprocess_run)
-    claude_zai._default_runner(["claude", "-p", "hi"], timeout=10, env={"PATH": "/x"})
+    claude_zai._default_runner(
+        ["claude", "-p", "hi"], timeout=10, env={"PATH": "/x"}, input_text="hi"
+    )
     assert seen["argv"][0] == r"C:\resolved\claude.CMD"
     assert seen["argv"][1:] == ["-p", "hi"]
 
@@ -224,7 +226,7 @@ def test_default_runner_raises_when_unresolvable(monkeypatch):
     monkeypatch.setattr(claude_zai, "resolve_executable", lambda n: None)
     with pytest.raises(FileNotFoundError):
         claude_zai._default_runner(
-            ["claude", "-p", "hi"], timeout=10, env={"PATH": "/x"}
+            ["claude", "-p", "hi"], timeout=10, env={"PATH": "/x"}, input_text="hi"
         )
 
 
@@ -232,9 +234,27 @@ def test_unresolvable_executable_is_a_clean_failure(monkeypatch):
     """run() must still convert that into a Result, never an exception."""
     monkeypatch.setenv("ZAI_API_KEY", "secret")
 
-    def exploding_runner(argv, timeout, env):
+    def exploding_runner(argv, timeout, env, input_text):
         raise FileNotFoundError("claude")
 
     r = claude_zai.run(_job(), _runner=exploding_runner)
     assert r.ok is False
     assert "not found on PATH" in r.error
+
+
+def test_oversized_prompt_never_reaches_argv(monkeypatch):
+    """cmd.exe caps the command line at ~8191 chars; the prompt must go on stdin."""
+    monkeypatch.setenv("ZAI_API_KEY", "secret")
+    big = "x" * 20000
+    job = Job(seat="s", transport="claude_zai", model="m", prompt=big, timeout_s=30)
+    seen = {}
+
+    def fake_runner(argv, timeout, env, input_text):
+        seen["argv"] = list(argv)
+        seen["input"] = input_text
+        return subprocess.CompletedProcess(argv, 0, "answer", "")
+
+    claude_zai.run(job, _runner=fake_runner)
+    assert seen["input"] == big
+    assert big not in " ".join(seen["argv"])
+    assert sum(len(a) for a in seen["argv"]) < 1000

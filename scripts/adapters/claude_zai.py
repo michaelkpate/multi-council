@@ -41,11 +41,13 @@ def build_env(
 def build_argv(job: Job) -> list[str]:
     # --model must be explicit: a global settings.json env block can set
     # ANTHROPIC_MODEL, which outranks the ANTHROPIC_DEFAULT_OPUS_MODEL we pass
-    # in the subprocess environment. The prompt stays last, after -p.
-    return ["claude", "--model", job.model, "-p", job.prompt]
+    # in the subprocess environment.
+    # The prompt goes on stdin, not argv: cmd.exe caps the command line at
+    # ~8191 chars and any real council prompt is larger.
+    return ["claude", "--model", job.model, "-p"]
 
 
-def _default_runner(argv: list[str], timeout: int, env: dict):
+def _default_runner(argv: list[str], timeout: int, env: dict, input_text: str):
     exe = resolve_executable(argv[0])
     if exe is None:
         # Windows CreateProcess appends .exe but not .cmd, so npm and shim
@@ -54,12 +56,12 @@ def _default_runner(argv: list[str], timeout: int, env: dict):
         raise FileNotFoundError(argv[0])
     return subprocess.run(
         [exe, *argv[1:]],
+        input=input_text,
         capture_output=True,
         text=True,
         timeout=timeout,
         encoding="utf-8",
         env=env,
-        stdin=subprocess.DEVNULL,
     )
 
 
@@ -93,7 +95,9 @@ def run(job: Job, _runner=None) -> Result:
             env = build_env(os.environ, api_key, job.model, config_dir=config_dir)
 
             try:
-                completed = runner(argv, timeout=job.timeout_s, env=env)
+                completed = runner(
+                    argv, timeout=job.timeout_s, env=env, input_text=job.prompt
+                )
             except subprocess.TimeoutExpired:
                 return Result.failure(job, "timeout expired", time.monotonic() - start)
             except FileNotFoundError:

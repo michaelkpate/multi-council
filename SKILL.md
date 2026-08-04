@@ -160,6 +160,10 @@ names, while `inkling-small` reports `text+image+audio->text` and is a perfectly
 advisor because it *emits* text.
 - `codex` seats need `codex login status` to report logged in
 - `agy` seats need Antigravity installed and signed in
+- Prompts are passed on stdin for `codex` and `claude_zai`, so they are not bound by
+  Windows' ~8191-char command-line limit. The `agy` seat still passes its prompt in argv
+  and is capped near 32,000 characters — a council over a very large document may lose
+  that seat.
 
 Check a roster without spending anything:
 `python multi-council/scripts/dispatch.py --jobs <file> --dry-run`

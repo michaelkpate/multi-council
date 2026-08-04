@@ -26,11 +26,13 @@ def build_argv(job: Job, out_file: str, effort: str = "high") -> list[str]:
         f"model_reasoning_effort={effort}",
         "-o",
         out_file,
-        job.prompt,
+        # "-" makes codex read the prompt from stdin. Passing it in argv breaks
+        # at cmd.exe's ~8191-char limit, which any real council prompt exceeds.
+        "-",
     ]
 
 
-def _default_runner(argv: list[str], timeout: int):
+def _default_runner(argv: list[str], timeout: int, input_text: str):
     exe = resolve_executable(argv[0])
     if exe is None:
         # Windows CreateProcess appends .exe but not .cmd, so npm and shim
@@ -39,12 +41,12 @@ def _default_runner(argv: list[str], timeout: int):
         raise FileNotFoundError(argv[0])
     return subprocess.run(
         [exe, *argv[1:]],
+        input=input_text,
         capture_output=True,
         text=True,
         timeout=timeout,
         encoding="utf-8",
         errors="replace",
-        stdin=subprocess.DEVNULL,
     )
 
 
@@ -64,7 +66,7 @@ def run(job: Job, _runner=None) -> Result:
         # be second-guessed here. See _default_runner.
 
         try:
-            completed = runner(argv, timeout=job.timeout_s)
+            completed = runner(argv, timeout=job.timeout_s, input_text=job.prompt)
         except subprocess.TimeoutExpired:
             return Result.failure(job, "timeout expired", time.monotonic() - start)
         except FileNotFoundError:
