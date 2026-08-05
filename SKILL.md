@@ -1,6 +1,6 @@
 ---
 name: multi-council
-description: "Run a decision through five advisors on five different models from five different labs, have them peer-review each other anonymously, and synthesize a divergence-first verdict. Use when the user says 'multi-council this', 'run the multi council', 'cross-model council', or presents a high-stakes decision with real tradeoffs where a single vendor's blind spots would be invisible. Do NOT use for factual lookups, creation tasks, or decisions with one clear right answer."
+description: "Run a decision through five advisors on five different models from five different labs, have them peer-review each other anonymously, and synthesize a divergence-first verdict. MANDATORY TRIGGERS: 'council this', 'ask the council', 'run the council', 'multi-council this', 'run the multi council', 'cross-model council', 'war room this', 'pressure-test this', 'stress-test this', 'debate this'. Also use when the user presents a high-stakes decision with real tradeoffs where a single vendor's blind spots would be invisible. Do NOT use for factual lookups, creation tasks, or decisions with one clear right answer."
 ---
 
 # multi-council
