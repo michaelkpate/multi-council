@@ -70,11 +70,17 @@ defaults by transport. `seed` is optional too and applies to `openrouter` seats 
 it when re-running a council so a changed answer traces to the changed question rather than
 to sampling noise. Every advisor's `prompt` is identical in the advise round.
 
-Then run:
+Then run it with an **absolute path to this skill's own directory** — the base
+directory is given to you when the skill is invoked. A relative path only
+resolves when the working directory happens to be the skill's parent, which is
+almost never true during real work:
 
 ```bash
-python multi-council/scripts/dispatch.py --jobs <tmp>/advise.json
+python "<skill base directory>/scripts/dispatch.py" --jobs <tmp>/advise.json
 ```
+
+The script puts its own directory on `sys.path`, so it imports its adapters
+correctly no matter what the working directory is.
 
 ## Step 3 — Review round
 
@@ -166,4 +172,4 @@ advisor because it *emits* text.
   that seat.
 
 Check a roster without spending anything:
-`python multi-council/scripts/dispatch.py --jobs <file> --dry-run`
+`python "<skill base directory>/scripts/dispatch.py" --jobs <file> --dry-run`
