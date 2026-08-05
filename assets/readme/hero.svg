@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" role="img" aria-labelledby="t d">
+  <title id="t">multi-council</title>
+  <desc id="d">Five advisors on five models from five different labs answer the same question, peer-review each other anonymously, and produce a divergence-first verdict. The council seats are OpenAI, Google, Z.ai, DeepSeek and Thinking Machines.</desc>
+
+  <rect width="1200" height="340" rx="20" fill="#0F1420"/>
+
+  <!-- left: title block -->
+  <text x="64" y="126" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif" font-size="82" font-weight="700" fill="#E6EAF2">multi-council</text>
+  <text x="64" y="178" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif" font-size="30" font-weight="600" fill="#8B95A9">Five advisors. Five models. Five labs.</text>
+  <text x="64" y="222" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif" font-size="25" fill="#6E7A90">No roles. Identical prompts. Anonymous peer review.</text>
+
+  <!-- proof chips -->
+  <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif" font-size="22" font-weight="600">
+    <rect x="64" y="256" width="150" height="44" rx="12" fill="#18202F"/>
+    <text x="139" y="285" fill="#9FE7C7" text-anchor="middle">$0.0086 / run</text>
+    <rect x="226" y="256" width="132" height="44" rx="12" fill="#18202F"/>
+    <text x="292" y="285" fill="#A8C6FF" text-anchor="middle">2 rounds</text>
+    <rect x="370" y="256" width="176" height="44" rx="12" fill="#18202F"/>
+    <text x="458" y="285" fill="#C9B4FF" text-anchor="middle">stdlib only</text>
+  </g>
+
+  <!-- right: the council -->
+  <rect x="688" y="44" width="448" height="252" rx="16" fill="#161C2A"/>
+  <text x="716" y="82" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#68738A" letter-spacing="2">THE COUNCIL</text>
+
+  <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif" font-size="24" fill="#D5DCE8">
+    <circle cx="726" cy="118" r="8" fill="#10A37F"/><text x="750" y="126">OpenAI</text>
+    <circle cx="726" cy="158" r="8" fill="#4C8DFF"/><text x="750" y="166">Google</text>
+    <circle cx="726" cy="198" r="8" fill="#B36BFF"/><text x="750" y="206">Z.ai</text>
+    <circle cx="726" cy="238" r="8" fill="#FF8A4C"/><text x="750" y="246">DeepSeek</text>
+    <circle cx="726" cy="278" r="8" fill="#F2C744"/><text x="750" y="286">Thinking Machines</text>
+  </g>
+</svg>

@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="450" viewBox="0 0 1200 450" role="img" aria-labelledby="ft fd">
+  <title id="ft">How a multi-council run works</title>
+  <desc id="fd">One framed question goes to five advisors on five different labs, each receiving an identical prompt with no assigned role. Their answers are anonymized as letters A to E with the mapping shuffled, then sent back to every advisor for blind peer review. The chairman synthesizes a verdict that leads with divergence.</desc>
+
+  <rect width="1200" height="450" rx="20" fill="#0F1420"/>
+
+  <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
+
+    <!-- stage headers -->
+    <g font-size="23" font-weight="700" fill="#68738A" letter-spacing="1">
+      <text x="56" y="72">1 · QUESTION</text>
+      <text x="300" y="72">2 · ADVISE</text>
+      <text x="604" y="72">3 · REVIEW</text>
+      <text x="888" y="72">4 · VERDICT</text>
+    </g>
+
+    <!-- stage 1 -->
+    <rect x="56" y="110" width="210" height="222" rx="14" fill="#161C2A"/>
+    <text x="161" y="200" font-size="25" font-weight="600" fill="#D5DCE8" text-anchor="middle">one framed</text>
+    <text x="161" y="232" font-size="25" font-weight="600" fill="#D5DCE8" text-anchor="middle">question</text>
+    <text x="161" y="272" font-size="20" fill="#6E7A90" text-anchor="middle">no opinion</text>
+    <text x="161" y="298" font-size="20" fill="#6E7A90" text-anchor="middle">no steer</text>
+
+    <!-- stage 2: five labs, identical prompt -->
+    <g font-size="22" fill="#D5DCE8">
+      <rect x="300" y="110" width="270" height="38" rx="9" fill="#18202F"/><rect x="300" y="110" width="6" height="38" rx="3" fill="#10A37F"/><text x="322" y="136">OpenAI</text>
+      <rect x="300" y="156" width="270" height="38" rx="9" fill="#18202F"/><rect x="300" y="156" width="6" height="38" rx="3" fill="#4C8DFF"/><text x="322" y="182">Google</text>
+      <rect x="300" y="202" width="270" height="38" rx="9" fill="#18202F"/><rect x="300" y="202" width="6" height="38" rx="3" fill="#B36BFF"/><text x="322" y="228">Z.ai</text>
+      <rect x="300" y="248" width="270" height="38" rx="9" fill="#18202F"/><rect x="300" y="248" width="6" height="38" rx="3" fill="#FF8A4C"/><text x="322" y="274">DeepSeek</text>
+      <rect x="300" y="294" width="270" height="38" rx="9" fill="#18202F"/><rect x="300" y="294" width="6" height="38" rx="3" fill="#F2C744"/><text x="322" y="320">Thinking Machines</text>
+    </g>
+    <text x="300" y="366" font-size="21" fill="#7E8AA0">identical prompt</text>
+    <text x="300" y="392" font-size="21" fill="#7E8AA0">no roles assigned</text>
+
+    <!-- stage 3: shuffled anonymous letters (colors deliberately reordered) -->
+    <g font-size="30" font-weight="700" fill="#D5DCE8">
+      <rect x="604" y="110" width="250" height="38" rx="9" fill="#18202F"/><rect x="604" y="110" width="6" height="38" rx="3" fill="#FF8A4C"/><text x="626" y="139">A</text>
+      <rect x="604" y="156" width="250" height="38" rx="9" fill="#18202F"/><rect x="604" y="156" width="6" height="38" rx="3" fill="#10A37F"/><text x="626" y="185">B</text>
+      <rect x="604" y="202" width="250" height="38" rx="9" fill="#18202F"/><rect x="604" y="202" width="6" height="38" rx="3" fill="#F2C744"/><text x="626" y="231">C</text>
+      <rect x="604" y="248" width="250" height="38" rx="9" fill="#18202F"/><rect x="604" y="248" width="6" height="38" rx="3" fill="#B36BFF"/><text x="626" y="277">D</text>
+      <rect x="604" y="294" width="250" height="38" rx="9" fill="#18202F"/><rect x="604" y="294" width="6" height="38" rx="3" fill="#4C8DFF"/><text x="626" y="323">E</text>
+    </g>
+    <text x="604" y="366" font-size="21" fill="#7E8AA0">anonymized</text>
+    <text x="604" y="392" font-size="21" fill="#7E8AA0">mapping shuffled</text>
+
+    <!-- stage 4 -->
+    <rect x="888" y="110" width="256" height="222" rx="14" fill="#161C2A"/>
+    <g font-size="21" fill="#D5DCE8">
+      <text x="912" y="158">leads with</text>
+      <text x="912" y="184" font-weight="700" fill="#9FE7C7">divergence</text>
+      <text x="912" y="228">unanimity is a</text>
+      <text x="912" y="254" font-weight="700" fill="#F2C744">flag, not proof</text>
+      <text x="912" y="298" fill="#6E7A90">votes are never</text>
+      <text x="912" y="322" fill="#6E7A90">counted</text>
+    </g>
+
+    <!-- arrows -->
+    <g stroke="#3A4560" stroke-width="3" fill="none">
+      <path d="M274 221 H292" marker-end="url(#a)"/>
+      <path d="M578 221 H596" marker-end="url(#a)"/>
+      <path d="M862 221 H880" marker-end="url(#a)"/>
+    </g>
+  </g>
+
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#3A4560"/>
+    </marker>
+  </defs>
+</svg>

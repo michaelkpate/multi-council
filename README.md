@@ -1,4 +1,6 @@
-# multi-council
+<p align="center">
+  <img src="./assets/readme/hero.svg" width="100%" alt="multi-council — five advisors on five models from five different labs: OpenAI, Google, Z.ai, DeepSeek and Thinking Machines. No roles, identical prompts, anonymous peer review.">
+</p>
 
 Run a decision through five advisors on **five different models from five different labs**, have them peer-review each other anonymously, then synthesize a divergence-first verdict.
 
@@ -11,6 +13,10 @@ The common version of this idea spawns five sub-agents on one model and gives ea
 multi-council assigns **no roles**. Every advisor receives an identical prompt. The only thing that differs is the model behind it. Disagreement therefore carries information: it means the models actually see the question differently.
 
 That design choice drives the output format too. The verdict leads with where advisors *diverged*, and explicitly treats unanimity as a flag to check for shared priors rather than as confidence.
+
+<p align="center">
+  <img src="./assets/readme/flow.svg" width="100%" alt="Flow of a run: one framed question with no steer goes to five labs, each given an identical prompt with no assigned role; their answers are anonymized as A through E with the mapping shuffled; every advisor then reviews all five blind; the verdict leads with divergence, treats unanimity as a flag rather than proof, and never counts votes.">
+</p>
 
 ## What it costs
 
