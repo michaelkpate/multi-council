@@ -28,6 +28,35 @@ Defined in [`rosters.json`](rosters.json).
 
 **Start with `zero_subscription`** unless you already hold the subscriptions the `reference` roster assumes. It needs one API key and nothing else.
 
+## Build your own roster
+
+The `reference` roster is one person's subscription stack. Yours will differ, and editing `rosters.json` is expected — treat the shipped rosters as examples, not defaults you have to live with.
+
+Seats are independent. Each one names a `transport` and a `model`, and you can mix transports freely inside a single roster. If you hold a ChatGPT subscription and an OpenRouter key but nothing else, a perfectly good roster is one `codex` seat plus four `openrouter` seats pointed at four different labs.
+
+```json
+{
+  "my_roster": {
+    "description": "ChatGPT subscription + OpenRouter key.",
+    "advisors": [
+      {"seat": "gpt",      "transport": "codex",      "model": "<your codex model>"},
+      {"seat": "deepseek", "transport": "openrouter", "model": "deepseek/..."},
+      {"seat": "qwen",     "transport": "openrouter", "model": "qwen/..."},
+      {"seat": "glm",      "transport": "openrouter", "model": "z-ai/..."},
+      {"seat": "grok",     "transport": "openrouter", "model": "x-ai/..."}
+    ]
+  }
+}
+```
+
+Three things worth knowing before you customize:
+
+**Different labs matter more than different models.** The entire premise is decorrelation. Five models from one provider share pretraining and alignment pressure, so their agreement tells you much less than agreement across five labs. If you must double up on a provider, spend your remaining seats on the most distinct labs you can reach.
+
+**Five seats is not required.** The skill stops and reports a failed council if fewer than three advisors respond, so a three- or four-seat roster works fine. Fewer seats costs less and finishes faster.
+
+**Check modality when picking OpenRouter models.** Verify a model's `architecture.modality` ends in `->text`. OpenRouter serves image, video, speech, embedding, and rerank models alongside text ones, and a non-text seat produces a failed or garbage advisor.
+
 ## Setup
 
 Only what your chosen roster actually uses:
