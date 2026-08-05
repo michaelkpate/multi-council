@@ -21,7 +21,11 @@ from adapters import agy, claude_zai, codex, openrouter
 from adapters.base import Job, Result
 
 DEFAULT_TIMEOUTS = {
-    "openrouter": 30,
+    # 30s was enough for the advise round but not the review round, where the
+    # prompt carries every advisor's answer and runs ~4x longer. A seat that
+    # answers in 11s on advise can still blow the deadline on review, and the
+    # request is billed either way.
+    "openrouter": 90,
     "agy": 60,
     "claude_zai": 90,
     "codex": 300,
