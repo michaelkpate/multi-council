@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="64" viewBox="0 0 420 64" role="img" aria-labelledby="mt md">
+  <title id="mt">README made with beautify-github-readme</title>
+  <desc id="md">A small signature closing the multi-council README, carrying the project's five-seat colour motif and linking to the beautify-github-readme skill.</desc>
+
+  <rect width="420" height="64" rx="12" fill="#0F1420"/>
+
+  <!-- the council motif: five seats, same colours as the hero -->
+  <g>
+    <circle cx="24" cy="32" r="4" fill="#10A37F"/>
+    <circle cx="38" cy="32" r="4" fill="#4C8DFF"/>
+    <circle cx="52" cy="32" r="4" fill="#B36BFF"/>
+    <circle cx="66" cy="32" r="4" fill="#FF8A4C"/>
+    <circle cx="80" cy="32" r="4" fill="#F2C744"/>
+  </g>
+
+  <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
+    <text x="104" y="26" font-size="13" font-weight="600" letter-spacing="1.2" fill="#68738A">README MADE WITH</text>
+    <text x="104" y="48" font-size="18" font-weight="600" fill="#D5DCE8">beautify-github-readme</text>
+  </g>
+
+  <!-- restrained outbound cue -->
+  <g stroke="#4C8DFF" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M386 38 L398 26"/>
+    <path d="M390 26 H398 V34"/>
+  </g>
+</svg>

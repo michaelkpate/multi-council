@@ -113,6 +113,10 @@ Offline and stdlib-only. No network, no keys, no spend.
 
 The council idea comes from [Andrej Karpathy's LLM Council](https://github.com/karpathy/llm-council). This skill grew out of [aiwithremy/claude-skills-llm-council](https://github.com/aiwithremy/claude-skills-llm-council), which implements the single-model sub-agent version.
 
+<p align="center">
+  <a href="https://github.com/oil-oil/beautify-github-readme"><img src="./assets/readme/made-with-beautify.svg" width="320" alt="README made with beautify-github-readme"></a>
+</p>
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
