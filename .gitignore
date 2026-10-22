@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
+
+# stray MCP server logs written into whatever the cwd happens to be
+*.log
+logs/
