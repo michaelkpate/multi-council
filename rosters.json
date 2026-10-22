@@ -3,7 +3,7 @@
     "description": "Uses ChatGPT Plus, Google One, and a Z.ai Coding Plan. ~half a cent per run.",
     "advisors": [
       {"seat": "gpt",      "transport": "codex",      "model": "gpt-5.6-luna"},
-      {"seat": "gemini",   "transport": "agy",        "model": "gemini-3.1-pro-high"},
+      {"seat": "gemini",   "transport": "agy",        "model": "gemini-4-argon-high"},
       {"seat": "glm",      "transport": "claude_zai", "model": "glm-5.2"},
       {"seat": "deepseek", "transport": "openrouter", "model": "deepseek/deepseek-v4-flash-0731"},
       {"seat": "inkling",  "transport": "openrouter", "model": "thinkingmachines/inkling-small"}
